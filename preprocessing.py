@@ -78,6 +78,7 @@ if __name__ == "__main__":
     driver = webdriver.Chrome(
         executable_path="../chromedriver_mac_arm64/chromedriver"
     )  # driver initialization
+    driver.set_page_load_timeout(10)
 
     # going through all the data files
     data_file = 'data/links/all_data_links.csv'
