@@ -1,5 +1,6 @@
 import glob
 import os
+import re
 from typing import List
 
 import colorgram
@@ -87,9 +88,17 @@ if __name__ == "__main__":
         )
         df = pd.read_csv(data_file)
         for i, row in df.iterrows():
-            URL = f"https://{row[1].strip()}"  # row[0] is the index
+            if not re.match(r'https?://', row[1]):
+                URL = f"https://{row[1].strip()}"  # row[0] is the index
+            else:
+                URL = row[1]
             img = "tmp.png"
-            driver.get(URL)
+            try:
+                driver.get(URL)
+            except Exception as e:
+                # Any exception, we just want to continue
+                print(f"{URL} caused an exception, skipping...")
+                continue
 
             # "algo 1"
             driver.get_screenshot_as_file(img)
@@ -110,24 +119,24 @@ if __name__ == "__main__":
             # deleting tmp file
             os.remove(img)
 
-        # creating the labels
-        labels = [out_file_prefix] * len(df)
-        out_df = pd.DataFrame(
-            columns=[
-                "URL",
-                "red",
-                "green",
-                "blue",
-                "text",
-                "brand_name",
-                "label",
-            ],
-            data=zip(
-                URLs, reds, greens, blues, all_texts, brand_names, labels
-            ),
-        )
-        out_df.to_csv(
-            f"data/scraped/{out_file_prefix}_scraped.csv", index=False
-        )
+            # creating the df (doing this for each loop, we want to save csv even in case of early stop)
+            labels = [out_file_prefix] * len(df)
+            out_df = pd.DataFrame(
+                columns=[
+                    "URL",
+                    "red",
+                    "green",
+                    "blue",
+                    "text",
+                    "brand_name",
+                    "label",
+                ],
+                data=zip(
+                    URLs, reds, greens, blues, all_texts, brand_names, labels
+                ),
+            )
+            out_df.to_csv(
+                f"data/scraped/{out_file_prefix}_scraped.csv", index=False
+            )
 
     driver.quit()
