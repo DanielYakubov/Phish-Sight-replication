@@ -77,11 +77,8 @@ if __name__ == "__main__":
     # https://stackoverflow.com/questions/40555930/selenium-chromedriver-executable-needs-to-be-in-path
     # you will also need chrome for this
     time_out_secs = 15
-    ChromeOptions = webdriver.ChromeOptions()
-    ChromeOptions.add_argument('--disable-browser-side-navigation')
     driver = webdriver.Chrome(
-        executable_path="../chromedriver_mac_arm64/chromedriver",
-        chrome_options=ChromeOptions
+        executable_path="../chromedriver_mac_arm64/chromedriver"
     )  # driver initialization
     driver.set_page_load_timeout(15)
 
@@ -93,6 +90,14 @@ if __name__ == "__main__":
     df = pd.read_csv(data_file)
     progress_bar = tqdm(range(len(df)))
     for i, row in df.iterrows():
+        # web driver sometimes gets stuck, so making a new one every few loops
+        if i % 5 == 0:
+            driver.quit()
+            driver = webdriver.Chrome(
+                executable_path="../chromedriver_mac_arm64/chromedriver"
+            )  # driver initialization
+            driver.set_page_load_timeout(15)
+
         if not re.match(r'https?://', row[0]):
             URL = f"https://{row[0].strip()}"
         else:
@@ -102,7 +107,7 @@ if __name__ == "__main__":
             # selenium gets stuck, will need to force timeouts sometimes
             p = multiprocessing.Process(target=driver.get(URL))
             p.start()
-            p.join(15)
+            p.join(time_out_secs)
             if p.is_alive():
                 p.terminate()
                 raise TimeoutError('Forced Timeout')
@@ -151,5 +156,3 @@ if __name__ == "__main__":
             f"data/scraped/all_data_scraped.csv", index=False
         )
         progress_bar.update(1)
-
-    driver.quit()
