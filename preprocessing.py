@@ -90,13 +90,13 @@ if __name__ == "__main__":
         if not re.match(r'https?://', row[0]):
             URL = f"https://{row[0].strip()}"
         else:
-            URL = row[1]
+            URL = row[0]
         img = "tmp.png"
         try:
             driver.get(URL)
         except Exception as e:
             # Any exception, we just want to continue
-            print(f"{URL} caused an exception, skipping...")
+            print(f"{URL} caused an exception {e}, skipping...")
             continue
 
         # "algo 1"
