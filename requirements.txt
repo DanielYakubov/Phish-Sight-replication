@@ -2,3 +2,4 @@ selenium==3.141.0
 colorgram-py==1.2.0
 pytesseract==0.3.10
 pandas==1.5.3
+tqdm==4.64.1

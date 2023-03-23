@@ -1,4 +1,3 @@
-import glob
 import os
 import re
 from typing import List
@@ -8,6 +7,7 @@ import pandas as pd
 import pytesseract
 from PIL import Image
 from selenium import webdriver
+from tqdm.auto import tqdm
 
 BRAND_NAMES = [
     "Microsoft",
@@ -80,63 +80,63 @@ if __name__ == "__main__":
     )  # driver initialization
 
     # going through all the data files
-    for data_file in glob.glob("data/links/*"):
-        URLs, all_texts, brand_names = [], [], []
-        reds, greens, blues = [], [], []  # will be a list of lists
-        out_file_prefix = data_file.removeprefix("data/links/").removesuffix(
-            ".csv"
+    data_file = 'data/links/all_data_links.csv'
+    URLs, all_texts, brand_names = [], [], []
+    reds, greens, blues = [], [], []
+    statuses = []
+    df = pd.read_csv(data_file)
+    progress_bar = tqdm(range(len(df)))
+    for i, row in df.iterrows():
+        if not re.match(r'https?://', row[0]):
+            URL = f"https://{row[0].strip()}"
+        else:
+            URL = row[1]
+        img = "tmp.png"
+        try:
+            driver.get(URL)
+        except Exception as e:
+            # Any exception, we just want to continue
+            print(f"{URL} caused an exception, skipping...")
+            continue
+
+        # "algo 1"
+        driver.get_screenshot_as_file(img)
+        red, green, blue = get_colors(img)
+
+        # "algo 2"
+        text = get_text_from_image(img)
+        brand_name = get_brand_name(text, BRAND_NAMES)
+
+        # updating lists
+        URLs.append(URL)
+        reds.append(red)
+        greens.append(green)
+        blues.append(blue)
+        all_texts.append(text)
+        brand_names.append(brand_name)
+        statuses.append(row[1])
+
+        # deleting tmp file
+        os.remove(img)
+
+        # creating the df (doing this for each loop, we want to save csv even in case of early stop)
+        out_df = pd.DataFrame(
+            columns=[
+                "URL",
+                "red",
+                "green",
+                "blue",
+                "text",
+                "brand_name",
+                "status",
+            ],
+            data=zip(
+                URLs, reds, greens, blues, all_texts, brand_names, statuses
+            ),
         )
-        df = pd.read_csv(data_file)
-        for i, row in df.iterrows():
-            if not re.match(r'https?://', row[1]):
-                URL = f"https://{row[1].strip()}"  # row[0] is the index
-            else:
-                URL = row[1]
-            img = "tmp.png"
-            try:
-                driver.get(URL)
-            except Exception as e:
-                # Any exception, we just want to continue
-                print(f"{URL} caused an exception, skipping...")
-                continue
-
-            # "algo 1"
-            driver.get_screenshot_as_file(img)
-            red, green, blue = get_colors(img)
-
-            # "algo 2"
-            text = get_text_from_image(img)
-            brand_name = get_brand_name(text, BRAND_NAMES)
-
-            # updating lists
-            URLs.append(URL)
-            reds.append(red)
-            greens.append(green)
-            blues.append(blue)
-            all_texts.append(text)
-            brand_names.append(brand_name)
-
-            # deleting tmp file
-            os.remove(img)
-
-            # creating the df (doing this for each loop, we want to save csv even in case of early stop)
-            labels = [out_file_prefix] * len(df)
-            out_df = pd.DataFrame(
-                columns=[
-                    "URL",
-                    "red",
-                    "green",
-                    "blue",
-                    "text",
-                    "brand_name",
-                    "label",
-                ],
-                data=zip(
-                    URLs, reds, greens, blues, all_texts, brand_names, labels
-                ),
-            )
-            out_df.to_csv(
-                f"data/scraped/{out_file_prefix}_scraped.csv", index=False
-            )
+        out_df.to_csv(
+            f"data/scraped/all_data_scraped.csv", index=False
+        )
+        progress_bar.update(1)
 
     driver.quit()
