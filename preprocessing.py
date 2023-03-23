@@ -1,3 +1,4 @@
+import multiprocessing
 import os
 import re
 from typing import List
@@ -75,10 +76,14 @@ def get_brand_name(text: str, brand_names: List[str]) -> str:
 if __name__ == "__main__":
     # https://stackoverflow.com/questions/40555930/selenium-chromedriver-executable-needs-to-be-in-path
     # you will also need chrome for this
+    time_out_secs = 15
+    ChromeOptions = webdriver.ChromeOptions()
+    ChromeOptions.add_argument('--disable-browser-side-navigation')
     driver = webdriver.Chrome(
-        executable_path="../chromedriver_mac_arm64/chromedriver"
+        executable_path="../chromedriver_mac_arm64/chromedriver",
+        chrome_options=ChromeOptions
     )  # driver initialization
-    driver.set_page_load_timeout(10)
+    driver.set_page_load_timeout(15)
 
     # going through all the data files
     data_file = 'data/links/all_data_links.csv'
@@ -94,10 +99,17 @@ if __name__ == "__main__":
             URL = row[0]
         img = "tmp.png"
         try:
-            driver.get(URL)
+            # selenium gets stuck, will need to force timeouts sometimes
+            p = multiprocessing.Process(target=driver.get(URL))
+            p.start()
+            p.join(15)
+            if p.is_alive():
+                p.terminate()
+                raise TimeoutError('Forced Timeout')
         except Exception as e:
             # Any exception, we just want to continue
             print(f"{URL} caused an exception {e}, skipping...")
+            progress_bar.update(1)
             continue
 
         # "algo 1"
