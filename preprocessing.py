@@ -1,5 +1,6 @@
-import glob
+from multiprocessing import Process
 import os
+import re
 from typing import List
 
 import colorgram
@@ -7,6 +8,8 @@ import pandas as pd
 import pytesseract
 from PIL import Image
 from selenium import webdriver
+from tqdm.auto import tqdm
+from wrapt_timeout_decorator import timeout
 
 BRAND_NAMES = [
     "Microsoft",
@@ -71,47 +74,77 @@ def get_brand_name(text: str, brand_names: List[str]) -> str:
     return 'no_brand'
 
 
+@timeout(15, timeout_exception=TimeoutError)
+def run_algos(driver, img):
+
+    # selenium gets stuck, will need to force timeouts sometimes
+    driver.get(URL)
+
+    # "algo 1"
+    driver.get_screenshot_as_file(img)
+    red, green, blue = get_colors(img)
+
+    # "algo 2"
+    text = get_text_from_image(img)
+    brand_name = get_brand_name(text, BRAND_NAMES)
+
+    return red, green, blue, text, brand_name
+
+
 if __name__ == "__main__":
     # https://stackoverflow.com/questions/40555930/selenium-chromedriver-executable-needs-to-be-in-path
     # you will also need chrome for this
+    time_out_secs = 10
     driver = webdriver.Chrome(
         executable_path="../chromedriver_mac_arm64/chromedriver"
     )  # driver initialization
+    driver.implicitly_wait(time_out_secs)
+    driver.set_page_load_timeout(time_out_secs)
 
     # going through all the data files
-    for data_file in glob.glob("data/links/*"):
-        URLs, all_texts, brand_names = [], [], []
-        reds, greens, blues = [], [], []  # will be a list of lists
-        out_file_prefix = data_file.removeprefix("data/links/").removesuffix(
-            ".csv"
-        )
-        df = pd.read_csv(data_file)
-        for i, row in df.iterrows():
-            URL = f"https://{row[1].strip()}"  # row[0] is the index
+    data_file = 'data/links/all_data_links.csv'
+    URLs, all_texts, brand_names = [], [], []
+    reds, greens, blues = [], [], []
+    statuses = []
+    df = pd.read_csv(data_file)
+    progress_bar = tqdm(range(len(df)))
+    for i, row in df.iterrows():
+        try:
+            if not re.match(r'https?://', row[0]):
+                URL = f"https://{row[0].strip()}"
+            else:
+                URL = row[0]
+
             img = "tmp.png"
-            driver.get(URL)
+            red, green, blue, text, brand_name = run_algos(driver, img)
 
-            # "algo 1"
-            driver.get_screenshot_as_file(img)
-            red, green, blue = get_colors(img)
+        except Exception as e:
+            # Any exception, we just want to continue
+            print(f"{URL} caused an exception {e}, skipping...")
+            driver.close()
+            driver.quit()
 
-            # "algo 2"
-            text = get_text_from_image(img)
-            brand_name = get_brand_name(text, BRAND_NAMES)
+            driver = webdriver.Chrome(
+                executable_path="../chromedriver_mac_arm64/chromedriver"
+            )  # driver initialization
+            driver.implicitly_wait(time_out_secs)
+            driver.set_page_load_timeout(time_out_secs)
+            progress_bar.update(1)
+            continue
 
-            # updating lists
-            URLs.append(URL)
-            reds.append(red)
-            greens.append(green)
-            blues.append(blue)
-            all_texts.append(text)
-            brand_names.append(brand_name)
+        # updating lists
+        URLs.append(URL)
+        reds.append(red)
+        greens.append(green)
+        blues.append(blue)
+        all_texts.append(text)
+        brand_names.append(brand_name)
+        statuses.append(row[1])
 
-            # deleting tmp file
-            os.remove(img)
+        # deleting tmp file
+        os.remove(img)
 
-        # creating the labels
-        labels = [out_file_prefix] * len(df)
+        # creating the df (doing this for each loop, we want to save csv even in case of early stop)
         out_df = pd.DataFrame(
             columns=[
                 "URL",
@@ -120,14 +153,14 @@ if __name__ == "__main__":
                 "blue",
                 "text",
                 "brand_name",
-                "label",
+                "status",
             ],
             data=zip(
-                URLs, reds, greens, blues, all_texts, brand_names, labels
+                URLs, reds, greens, blues, all_texts, brand_names, statuses
             ),
         )
         out_df.to_csv(
-            f"data/scraped/{out_file_prefix}_scraped.csv", index=False
+            f"data/scraped/all_data_scraped.csv", index=False
         )
-
+        progress_bar.update(1)
     driver.quit()
