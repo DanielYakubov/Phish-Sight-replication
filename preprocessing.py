@@ -1,4 +1,4 @@
-import multiprocessing
+from multiprocessing import Process
 import os
 import re
 from typing import List
@@ -9,6 +9,7 @@ import pytesseract
 from PIL import Image
 from selenium import webdriver
 from tqdm.auto import tqdm
+from wrapt_timeout_decorator import timeout
 
 BRAND_NAMES = [
     "Microsoft",
@@ -73,14 +74,32 @@ def get_brand_name(text: str, brand_names: List[str]) -> str:
     return 'no_brand'
 
 
+@timeout(15, timeout_exception=TimeoutError)
+def run_algos(driver, img):
+
+    # selenium gets stuck, will need to force timeouts sometimes
+    driver.get(URL)
+
+    # "algo 1"
+    driver.get_screenshot_as_file(img)
+    red, green, blue = get_colors(img)
+
+    # "algo 2"
+    text = get_text_from_image(img)
+    brand_name = get_brand_name(text, BRAND_NAMES)
+
+    return red, green, blue, text, brand_name
+
+
 if __name__ == "__main__":
     # https://stackoverflow.com/questions/40555930/selenium-chromedriver-executable-needs-to-be-in-path
     # you will also need chrome for this
-    time_out_secs = 15
+    time_out_secs = 10
     driver = webdriver.Chrome(
         executable_path="../chromedriver_mac_arm64/chromedriver"
     )  # driver initialization
-    driver.set_page_load_timeout(15)
+    driver.implicitly_wait(time_out_secs)
+    driver.set_page_load_timeout(time_out_secs)
 
     # going through all the data files
     data_file = 'data/links/all_data_links.csv'
@@ -90,40 +109,28 @@ if __name__ == "__main__":
     df = pd.read_csv(data_file)
     progress_bar = tqdm(range(len(df)))
     for i, row in df.iterrows():
-        # web driver sometimes gets stuck, so making a new one every few loops
-        if i % 5 == 0:
-            driver.quit()
-            driver = webdriver.Chrome(
-                executable_path="../chromedriver_mac_arm64/chromedriver"
-            )  # driver initialization
-            driver.set_page_load_timeout(15)
-
-        if not re.match(r'https?://', row[0]):
-            URL = f"https://{row[0].strip()}"
-        else:
-            URL = row[0]
-        img = "tmp.png"
         try:
-            # selenium gets stuck, will need to force timeouts sometimes
-            p = multiprocessing.Process(target=driver.get(URL))
-            p.start()
-            p.join(time_out_secs)
-            if p.is_alive():
-                p.terminate()
-                raise TimeoutError('Forced Timeout')
+            if not re.match(r'https?://', row[0]):
+                URL = f"https://{row[0].strip()}"
+            else:
+                URL = row[0]
+
+            img = "tmp.png"
+            red, green, blue, text, brand_name = run_algos(driver, img)
+
         except Exception as e:
             # Any exception, we just want to continue
             print(f"{URL} caused an exception {e}, skipping...")
+            driver.close()
+            driver.quit()
+
+            driver = webdriver.Chrome(
+                executable_path="../chromedriver_mac_arm64/chromedriver"
+            )  # driver initialization
+            driver.implicitly_wait(time_out_secs)
+            driver.set_page_load_timeout(time_out_secs)
             progress_bar.update(1)
             continue
-
-        # "algo 1"
-        driver.get_screenshot_as_file(img)
-        red, green, blue = get_colors(img)
-
-        # "algo 2"
-        text = get_text_from_image(img)
-        brand_name = get_brand_name(text, BRAND_NAMES)
 
         # updating lists
         URLs.append(URL)
@@ -156,3 +163,4 @@ if __name__ == "__main__":
             f"data/scraped/all_data_scraped.csv", index=False
         )
         progress_bar.update(1)
+    driver.quit()
