@@ -1,166 +1,180 @@
-from multiprocessing import Process
-import os
+import numpy as np
+import warnings
+from scipy import stats
 import re
-from typing import List
-
-import colorgram
 import pandas as pd
-import pytesseract
-from PIL import Image
-from selenium import webdriver
-from tqdm.auto import tqdm
-from wrapt_timeout_decorator import timeout
+import seaborn as sns
+import matplotlib.pyplot as plt
+import nltk
+import math
 
-BRAND_NAMES = [
-    "Microsoft",
-    "Netflix",
-    "Linkedin",
-    "Apple",
-    "DocuSign",
-    "Zoom",
-    "Ring Central",
-    "eFax",
-    "Xerox",
-    "AT&T",
-    "Amazon",
-    "CVS",
-    "Sam’s Club",
-    "Walmart",
-    "Intuit",
-    "American Express Inc",
-    "Paypal",
-    "Chase Bank",
-]
+from sklearn.model_selection import train_test_split
+from urllib.parse import urlparse
 
 
-def get_colors(img_path, num_colors=8):
-    """
-    Extract num_colors from an image file, returned as a list of RGB Dictionaries
-    """
-    colors = colorgram.extract(img_path, num_colors)
-    # In the paper they only care about the dominant color feature vector, not all 8 colors
-    dom_proportion_and_color = max(
-        [(c.proportion, c.rgb) for c in colors], key=lambda c: c[0]
-    )
-    dom_color = dom_proportion_and_color[1]
-    # each color is encoded in decimal form?
-    red, green, blue = (
-        float(dom_color.r),
-        float(dom_color.g),
-        float(dom_color.b),
-    )
-    return red, green, blue
+#read and get the data
+def get_data(data_path):
+    # data=pd.read_csv("data/scraped/all_data_scraped.csv")
+    df = pd.read_csv(data_path)
+    return df
+
+#removing null and duplicate values
+def drop_nulls_and_duplicates(df):
+    df=df.dropna().reset_index(drop=True)
+    df=df.drop_duplicates(keep='first').reset_index(drop=True)
+    return df
 
 
-def get_text_from_image(img_path):
-    """
-    Extract text from an image file, returned as an str
-    """
-    img = Image.open(img_path)
-    return pytesseract.image_to_string(img).strip()
+#scaling of the colors
+def color_scaling(df):
+    for i in range(len(df['red'])):
+        df['red'][i] = df['red'][i] / 255
+    for i in range(len(df['green'])):
+        df['green'][i] = df['green'][i] / 255
+    for i in range(len(df['blue'])):
+        df['blue'][i] = df['blue'][i] / 255
+    return df
 
 
-def get_brand_name(text: str, brand_names: List[str]) -> str:
-    """
-    Checks if a text contains brand names, if yes, it returns the brand name
-    assumes only one brand name
-    :param text: str from text read in using OCR on a webpage
-    :return: str, the brand name that is present if there is one, else 'no_brand'
-    """
-    for name in brand_names:
-        # very naive, no normalizing text or accounting for OCR errors
-        if name in text:
-            return name
-    return 'no_brand'
+#filter out texts that are not repeating in the dataset
+def non_unique_text(df):
+    ty=pd.DataFrame(data=df['text'].value_counts().sort_values(ascending=False))
+    ty=ty.loc[ty['text'] != 1]
+
+    rem_index = []
+    for i in range(len(ty)):
+        common_loc = df.loc[df['text'] == ty.index[i]]
+        for j in range(len(df)):
+            if df['text'][j] == ty.index[i]:
+                rem_index.append(j)
+        del common_loc 
+
+    df=df.drop(labels=rem_index,axis=0)
+    df=df.reset_index(drop=True)
+    return df
 
 
-@timeout(15, timeout_exception=TimeoutError)
-def run_algos(driver, img):
+#removing data points whose url's do not exist or are non-functional
+def drop_bad_pages(df):
+    bad_pages = []
+    bad_pattern = r"Site Not Found|This page isn’t working|Internal Server Error|This page isn’t working|Your connection is not private|404"
+    for i in range(len(df)):
+        if re.match(bad_pattern, df['text'][i], flags=re.IGNORECASE):
+            bad_pages.append(i)
+    df=df.drop(labels=bad_pages,axis=0)
+    df=df.reset_index(drop=True)
+    return df
 
-    # selenium gets stuck, will need to force timeouts sometimes
-    driver.get(URL)
 
-    # "algo 1"
-    driver.get_screenshot_as_file(img)
-    red, green, blue = get_colors(img)
+#conversion of brands to numericals
+def one_hot_encoding(df):
+    one_hot = pd.get_dummies(df.brand_name)
+    df = pd.concat([df, one_hot], axis=1)
+    return df
 
-    # "algo 2"
-    text = get_text_from_image(img)
-    brand_name = get_brand_name(text, BRAND_NAMES)
 
-    return red, green, blue, text, brand_name
+#get the domain name
+def get_top_level_domain(url):
+    tld = urlparse(url)
+    return tld.netloc
+
+
+#get the domain name's length
+def get_url_len(url_str):
+    return len(url_str)
+
+
+#get n-grams for each text(in our case it is n=2)
+def get_english_char_bigram_probs():
+    words = nltk.corpus.words.words('en') # loading in a corpus of words
+    bg_cnts = {}
+    ung_cnts = {}
+    # going through each word in the corpus
+    for word in words:
+        padding = ' ' # needed for bigram models
+        word = padding + word.lower() + padding
+        # getting characters
+        chars = [c for c in word]
+        bgs = nltk.bigrams(chars) # getting bigrams
+        
+        # adding bigram to counts dictionary
+        for bigram in bgs:
+            bg_cnts[bigram] = bg_cnts[bigram] + 1 if bigram in bg_cnts else 1
+            
+        #adding unigram to count dictionary
+        for unigram in chars:
+            ung_cnts[unigram] = ung_cnts[unigram] + 1 if unigram in ung_cnts else 1
+    
+    # turning each count into a probability (MLE)
+    for k, v in bg_cnts.items():
+        first_word, _ = k
+        denom = ung_cnts[first_word]
+        bg_cnts[k] = v/denom # now it is a conditional probability
+        
+    # same for unigrams
+    norm = sum(ung_cnts.values())
+    for k, v in ung_cnts.items():
+        ung_cnts[k] = v/norm
+
+    return bg_cnts, ung_cnts
+
+
+#score of each url texts' bigrams
+def get_score(ung_probs, bg_probs, url_str):
+    url_chars = [c for c in url_str]
+    url_bgs = nltk.bigrams(url_chars)
+    
+    # getting a score of each url char bigram
+    score = 0
+    for bigram in url_bgs:
+        # using linear interpolatation smoothing in negative log space to prevent underflow (lambda 0.5)
+        first_word, _ = bigram
+        score += 0.5*bg_probs.get(bigram, 0) + 0.5*ung_probs.get(first_word, 0)
+        # TODO probably should do entropy here
+    return score
+
+
+#normal splitting of the dataset into training and testing
+def split_data(df):
+    y = df['status']
+    X = df.drop(['status'], axis=1)
+    X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.1, random_state=42)
+    return X_tr, X_te, y_tr, y_te
+
+
+#store csv's
+def store_datasets(Xtrain,Xtest,ytrain,ytest):
+    Xtrain.to_csv('x_train.csv',index=False)
+    Xtest.to_csv('x_test.csv',index=False)
+    ytrain.to_csv('y_train.csv',index=False)
+    ytest.to_csv('y_test.csv',index=False)
+
 
 
 if __name__ == "__main__":
-    # https://stackoverflow.com/questions/40555930/selenium-chromedriver-executable-needs-to-be-in-path
-    # you will also need chrome for this
-    time_out_secs = 10
-    driver = webdriver.Chrome(
-        executable_path="../chromedriver_mac_arm64/chromedriver"
-    )  # driver initialization
-    driver.implicitly_wait(time_out_secs)
-    driver.set_page_load_timeout(time_out_secs)
+    data = get_data("data/scraped/all_data_scraped.csv")
+    data['status'] = np.where(data['status']=="legitimate",0,1)
+    data = drop_nulls_and_duplicates(data)
+    data = color_scaling(data)
+    data = non_unique_text(data)
+    data = drop_bad_pages(data)
+    data = one_hot_encoding(data)
+    data = data.drop(['brand_name', 'no_brand'], axis=1)
 
-    # going through all the data files
-    data_file = 'data/links/all_data_links.csv'
-    URLs, all_texts, brand_names = [], [], []
-    reds, greens, blues = [], [], []
-    statuses = []
-    df = pd.read_csv(data_file)
-    progress_bar = tqdm(range(len(df)))
-    for i, row in df.iterrows():
-        try:
-            if not re.match(r'https?://', row[0]):
-                URL = f"https://{row[0].strip()}"
-            else:
-                URL = row[0]
+    bg_probs, ung_probs = get_english_char_bigram_probs()
+    url_lens = []
+    url_scores = []
+    for url in data['URL']:
+        tld = get_top_level_domain(url)
+        l = get_url_len(tld)
+        score = get_score(ung_probs, bg_probs, tld)
+        url_lens.append(l)
+        url_scores.append(score)
 
-            img = "tmp.png"
-            red, green, blue, text, brand_name = run_algos(driver, img)
+    # adding new features to data
+    data['url_len'] = url_lens
+    data['tld_char_score'] = url_scores
 
-        except Exception as e:
-            # Any exception, we just want to continue
-            print(f"{URL} caused an exception {e}, skipping...")
-            driver.close()
-            driver.quit()
 
-            driver = webdriver.Chrome(
-                executable_path="../chromedriver_mac_arm64/chromedriver"
-            )  # driver initialization
-            driver.implicitly_wait(time_out_secs)
-            driver.set_page_load_timeout(time_out_secs)
-            progress_bar.update(1)
-            continue
-
-        # updating lists
-        URLs.append(URL)
-        reds.append(red)
-        greens.append(green)
-        blues.append(blue)
-        all_texts.append(text)
-        brand_names.append(brand_name)
-        statuses.append(row[1])
-
-        # deleting tmp file
-        os.remove(img)
-
-        # creating the df (doing this for each loop, we want to save csv even in case of early stop)
-        out_df = pd.DataFrame(
-            columns=[
-                "URL",
-                "red",
-                "green",
-                "blue",
-                "text",
-                "brand_name",
-                "status",
-            ],
-            data=zip(
-                URLs, reds, greens, blues, all_texts, brand_names, statuses
-            ),
-        )
-        out_df.to_csv(
-            f"data/scraped/all_data_scraped.csv", index=False
-        )
-        progress_bar.update(1)
-    driver.quit()
+    X_train, X_test, y_train, y_test = split_data(data)
+    store_datasets(X_train, X_test, y_train, y_test)
