@@ -14,7 +14,6 @@ from urllib.parse import urlparse
 
 #read and get the data
 def get_data(data_path):
-    # data=pd.read_csv("data/scraped/all_data_scraped.csv")
     df = pd.read_csv(data_path)
     return df
 
@@ -144,10 +143,10 @@ def split_data(df):
 
 #store csv's
 def store_datasets(Xtrain,Xtest,ytrain,ytest):
-    Xtrain.to_csv('x_train.csv',index=False)
-    Xtest.to_csv('x_test.csv',index=False)
-    ytrain.to_csv('y_train.csv',index=False)
-    ytest.to_csv('y_test.csv',index=False)
+    Xtrain.to_csv('data/X_train.csv',index=False)
+    Xtest.to_csv('data/X_test.csv',index=False)
+    ytrain.to_csv('data/y_train.csv',index=False)
+    ytest.to_csv('data/y_test.csv',index=False)
 
 
 
