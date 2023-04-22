@@ -1,12 +1,7 @@
 import numpy as np
-import warnings
-from scipy import stats
 import re
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 import nltk
-import math
 
 from sklearn.model_selection import train_test_split
 from urllib.parse import urlparse
@@ -174,6 +169,8 @@ if __name__ == "__main__":
     data['url_len'] = url_lens
     data['tld_char_score'] = url_scores
 
+    # dropping all text features
+    data = data.drop(["URL", "text"], axis=1)
 
     X_train, X_test, y_train, y_test = split_data(data)
     store_datasets(X_train, X_test, y_train, y_test)
