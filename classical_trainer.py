@@ -9,7 +9,7 @@ from sklearn.svm import SVC
 from sklearn.preprocessing import StandardScaler
 
 # Metric imports
-from sklearn.metrics import accuracy_score, f1_score, recall_score, precision_score, matthews_corrcoef
+from sklearn.metrics import accuracy_score, f1_score, recall_score, precision_score, matthews_corrcoef,cohen_kappa_score
 from sklearn.model_selection import GridSearchCV
 
 # other
@@ -62,6 +62,7 @@ if __name__ == "__main__":
     recalls = []
     precisions = []
     MCCs = []
+    kappas = []
 
     # hyperparameter training loop and evaluation
     for model, params, scaling in model_and_params:
@@ -96,12 +97,13 @@ if __name__ == "__main__":
         recalls.append(recall_score(y_test, y_hat))
         precisions.append(precision_score(y_test, y_hat))
         MCCs.append(matthews_corrcoef(y_test, y_hat))
+        kappas.append(cohen_kappa_score(y_test, y_hat))
         print('----')
 
     # saving metrics
     models = [model.__name__ for model, _, _ in model_and_params] # getting only the model names
-    metrics = pd.DataFrame(data=zip(models, accs, f1s, recalls, precisions, MCCs),
-                           columns=['Model', "Accuracy", "F1", "Recall", "Precision", "Matthews correlation coefficient (MCC)"])
+    metrics = pd.DataFrame(data=zip(models, accs, f1s, recalls, precisions, MCCs, kappas),
+                           columns=['Model', "Accuracy", "F1", "Recall", "Precision", "Matthews correlation coefficient (MCC)", "Kappa Coefficient"])
     metrics.to_csv("metrics/classical_models.csv")
     print(metrics)
 
