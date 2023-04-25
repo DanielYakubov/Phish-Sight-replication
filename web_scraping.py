@@ -100,7 +100,7 @@ if __name__ == "__main__":
     driver.set_page_load_timeout(time_out_secs)
 
     # going through all the data files
-    data_file = 'data/scraped/all_data_scraped.csv'
+    data_file = 'data/links/links_for_redo.csv'
     URLs, all_texts, brand_names = [], [], []
     color1s, color2s, color3s, color4s, color5s, color6s, color7s, color8s = [], [], [], [], [], [], [], []
     statuses = []
