@@ -33,23 +33,21 @@ BRAND_NAMES = [
 ]
 
 
+def rgb_to_decimal(r, g, b):
+    """converting an rgb value to a base10 value"""
+    return (r << 16) + (g << 8) + b
+
 def get_colors(img_path, num_colors=8):
     """
     Extract num_colors from an image file, returned as a list of RGB Dictionaries
     """
     colors = colorgram.extract(img_path, num_colors)
-    # In the paper they only care about the dominant color feature vector, not all 8 colors
-    dom_proportion_and_color = max(
-        [(c.proportion, c.rgb) for c in colors], key=lambda c: c[0]
-    )
-    dom_color = dom_proportion_and_color[1]
-    # each color is encoded in decimal form?
-    red, green, blue = (
-        float(dom_color.r),
-        float(dom_color.g),
-        float(dom_color.b),
-    )
-    return red, green, blue
+    colors = [(rgb_to_decimal(c.rgb.r, c.rgb.g, c.rgb.b)) for c in colors]
+    output_colors = [0] * 8
+    for i, c in enumerate(colors):
+        output_colors[i] = c
+
+    return output_colors
 
 
 def get_text_from_image(img_path):
@@ -82,13 +80,13 @@ def run_algos(driver, img):
 
     # "algo 1"
     driver.get_screenshot_as_file(img)
-    red, green, blue = get_colors(img)
+    colors = get_colors(img)
 
     # "algo 2"
     text = get_text_from_image(img)
     brand_name = get_brand_name(text, BRAND_NAMES)
 
-    return red, green, blue, text, brand_name
+    return colors, text, brand_name
 
 
 if __name__ == "__main__":
@@ -102,11 +100,11 @@ if __name__ == "__main__":
     driver.set_page_load_timeout(time_out_secs)
 
     # going through all the data files
-    data_file = 'data/links/all_data_links.csv'
+    data_file = 'data/scraped/all_data_scraped.csv'
     URLs, all_texts, brand_names = [], [], []
-    reds, greens, blues = [], [], []
+    color1s, color2s, color3s, color4s, color5s, color6s, color7s, color8s = [], [], [], [], [], [], [], []
     statuses = []
-    df = pd.read_csv(data_file)
+    df = pd.read_csv(data_file)[:2]
     progress_bar = tqdm(range(len(df)))
     for i, row in df.iterrows():
         try:
@@ -116,7 +114,7 @@ if __name__ == "__main__":
                 URL = row[0]
 
             img = "tmp.png"
-            red, green, blue, text, brand_name = run_algos(driver, img)
+            colors, text, brand_name = run_algos(driver, img)
 
         except Exception as e:
             # Any exception, we just want to continue
@@ -132,11 +130,19 @@ if __name__ == "__main__":
             progress_bar.update(1)
             continue
 
+        # Not graceful, but explicit
+        color1, color2, color3, color4, color5, color6, color7, color8 = colors
+
         # updating lists
         URLs.append(URL)
-        reds.append(red)
-        greens.append(green)
-        blues.append(blue)
+        color1s.append(color1)
+        color2s.append(color2)
+        color3s.append(color3)
+        color4s.append(color4)
+        color5s.append(color5)
+        color6s.append(color6)
+        color7s.append(color7)
+        color8s.append(color8)
         all_texts.append(text)
         brand_names.append(brand_name)
         statuses.append(row[1])
@@ -148,19 +154,25 @@ if __name__ == "__main__":
         out_df = pd.DataFrame(
             columns=[
                 "URL",
-                "red",
-                "green",
-                "blue",
+                "color1",
+                "color2",
+                "color3",
+                "color4",
+                "color5",
+                "color6",
+                "color7",
+                "color8",
                 "text",
                 "brand_name",
                 "status",
             ],
             data=zip(
-                URLs, reds, greens, blues, all_texts, brand_names, statuses
+                URLs, color1s, color2s, color3s, color4s, color5s, color6s, color7s, color8s, all_texts, brand_names, statuses
             ),
         )
         out_df.to_csv(
-            f"data/scraped/all_data_scraped.csv", index=False
+            f"data/scraped/all_data_scraped_redo.csv", index=False
         )
         progress_bar.update(1)
     driver.quit()
+
