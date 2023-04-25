@@ -104,7 +104,7 @@ if __name__ == "__main__":
     URLs, all_texts, brand_names = [], [], []
     color1s, color2s, color3s, color4s, color5s, color6s, color7s, color8s = [], [], [], [], [], [], [], []
     statuses = []
-    df = pd.read_csv(data_file)[:2]
+    df = pd.read_csv(data_file)
     progress_bar = tqdm(range(len(df)))
     for i, row in df.iterrows():
         try:
