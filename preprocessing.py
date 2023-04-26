@@ -169,6 +169,9 @@ if __name__ == "__main__":
     data['url_len'] = url_lens
     data['tld_char_score'] = url_scores
 
+    # # needed for redo
+    # data[["URL", "status"]].to_csv('data/links/links_for_redo.csv', index=False)
+
     # dropping all text features
     data = data.drop(["URL", "text"], axis=1)
 
