@@ -15,19 +15,20 @@ def get_data(data_path):
 #removing null and duplicate values
 def drop_nulls_and_duplicates(df):
     df=df.dropna().reset_index(drop=True)
-    df=df.drop_duplicates(keep='first').reset_index(drop=True)
+    # df=df.drop_duplicates(keep='first').reset_index(drop=True)
+    df=df.drop_duplicates(subset='URL', keep="first").reset_index(drop=True)
     return df
 
 
-#scaling of the colors
-def color_scaling(df):
-    for i in range(len(df['red'])):
-        df['red'][i] = df['red'][i] / 255
-    for i in range(len(df['green'])):
-        df['green'][i] = df['green'][i] / 255
-    for i in range(len(df['blue'])):
-        df['blue'][i] = df['blue'][i] / 255
-    return df
+# #scaling of the colors - not needed now
+# def color_scaling(df):
+#     for i in range(len(df['red'])):
+#         df['red'][i] = df['red'][i] / 255
+#     for i in range(len(df['green'])):
+#         df['green'][i] = df['green'][i] / 255
+#     for i in range(len(df['blue'])):
+#         df['blue'][i] = df['blue'][i] / 255
+#     return df
 
 
 #filter out texts that are not repeating in the dataset
@@ -147,9 +148,9 @@ def store_datasets(Xtrain,Xtest,ytrain,ytest):
 
 if __name__ == "__main__":
     data = get_data("data/scraped/all_data_scraped.csv")
-    data['status'] = np.where(data['status']=="legitimate",0,1)
+    # data['status'] = np.where(data['status']=="legitimate",0,1)
     data = drop_nulls_and_duplicates(data)
-    data = color_scaling(data)
+    # data = color_scaling(data)
     data = non_unique_text(data)
     data = drop_bad_pages(data)
     data = one_hot_encoding(data)
