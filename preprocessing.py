@@ -145,7 +145,6 @@ def store_datasets(Xtrain,Xtest,ytrain,ytest):
     ytest.to_csv('data/y_test.csv',index=False)
 
 
-
 if __name__ == "__main__":
     data = get_data("data/scraped/all_data_scraped.csv")
     # data['status'] = np.where(data['status']=="legitimate",0,1)
