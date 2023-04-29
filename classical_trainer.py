@@ -76,7 +76,7 @@ if __name__ == "__main__":
 
         gs_clf = GridSearchCV(estimator=model(),
                      param_grid=params,
-                     cv=5,
+                     cv=20,
                      verbose=0,
                      scoring='recall') # we want to maximize recall
         gs_clf.fit(inloop_train_X, y_train)
