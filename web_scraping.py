@@ -92,7 +92,7 @@ def run_algos(driver, img):
 if __name__ == "__main__":
     # https://stackoverflow.com/questions/40555930/selenium-chromedriver-executable-needs-to-be-in-path
     # you will also need chrome for this
-    time_out_secs = 60
+    time_out_secs = 20
     driver = webdriver.Chrome(
         executable_path="../chromedriver_mac_arm64/chromedriver"
     )  # driver initialization
@@ -100,7 +100,7 @@ if __name__ == "__main__":
     driver.set_page_load_timeout(time_out_secs)
 
     # going through all the data files
-    data_file = 'data/links/additional_phishing.csv'
+    data_file = 'data/links/all_data_links.csv'
     URLs, all_texts, brand_names = [], [], []
     color1s, color2s, color3s, color4s, color5s, color6s, color7s, color8s = [], [], [], [], [], [], [], []
     statuses = []
@@ -171,7 +171,7 @@ if __name__ == "__main__":
             ),
         )
         out_df.to_csv(
-            f"data/scraped/all_data_scraped_2.csv", index=False
+            f"data/scraped/all_data_scraped.csv", index=False
         )
         progress_bar.update(1)
     driver.quit()
