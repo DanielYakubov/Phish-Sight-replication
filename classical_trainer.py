@@ -9,12 +9,18 @@ from sklearn.svm import SVC
 from sklearn.preprocessing import StandardScaler
 
 # Metric imports
-from sklearn.metrics import accuracy_score, f1_score, recall_score, precision_score, matthews_corrcoef,cohen_kappa_score
+from sklearn.metrics import accuracy_score, f1_score, recall_score, precision_score, matthews_corrcoef,cohen_kappa_score, confusion_matrix
 from sklearn.model_selection import GridSearchCV
 
 # other
 import pandas as pd
 import joblib
+
+
+def get_fpr(y_test, y_hat):
+    tn, fp, fn, tp = confusion_matrix(y_test, y_hat).ravel()
+    fpr = fp/(fp+tn)
+    return fpr
 
 if __name__ == "__main__":
     # reading in data
@@ -63,6 +69,7 @@ if __name__ == "__main__":
     precisions = []
     MCCs = []
     kappas = []
+    fprs = []
 
     # hyperparameter training loop and evaluation
     for model, params, scaling in model_and_params:
@@ -76,7 +83,7 @@ if __name__ == "__main__":
 
         gs_clf = GridSearchCV(estimator=model(),
                      param_grid=params,
-                     cv=20,
+                     cv=5,
                      verbose=0,
                      scoring='recall') # we want to maximize recall
         gs_clf.fit(inloop_train_X, y_train)
@@ -98,12 +105,13 @@ if __name__ == "__main__":
         precisions.append(precision_score(y_test, y_hat))
         MCCs.append(matthews_corrcoef(y_test, y_hat))
         kappas.append(cohen_kappa_score(y_test, y_hat))
+        fprs.append(get_fpr(y_test, y_hat))
         print('----')
 
     # saving metrics
     models = [model.__name__ for model, _, _ in model_and_params] # getting only the model names
-    metrics = pd.DataFrame(data=zip(models, accs, f1s, recalls, precisions, MCCs, kappas),
-                           columns=['Model', "Accuracy", "F1", "Recall", "Precision", "Matthews correlation coefficient (MCC)", "Kappa Coefficient"])
+    metrics = pd.DataFrame(data=zip(models, accs, f1s, recalls, precisions, MCCs, kappas, fprs),
+                           columns=['Model', "Accuracy", "F1", "Recall", "Precision", "Matthews correlation coefficient (MCC)", "Kappa Coefficient", "FPR"])
     metrics.to_csv("metrics/classical_models.csv")
     print(metrics)
 
