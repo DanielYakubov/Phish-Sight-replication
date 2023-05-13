@@ -156,6 +156,7 @@ if __name__ == "__main__":
     data = one_hot_encoding(data)
     data = data.drop(['brand_name', 'no_brand'], axis=1)
 
+    # URL based features
     bg_probs, ung_probs = get_url_char_bigram_probs()
     url_lens = []
     url_scores = []
@@ -166,13 +167,15 @@ if __name__ == "__main__":
         url_lens.append(l)
         url_scores.append(score)
 
+    # text based features
+    text_lens = []
+    for t in data['text']:
+        text_lens.append(len(t))
+
     # adding new features to data
     data['url_len'] = url_lens
     data['tld_char_score'] = url_scores
-
-    # # needed for redo
-    # data[["URL", "status"]].to_csv('data/links/links_for_redo.csv', index=False)
-
+    data['text_len'] = text_lens
     # dropping all text features
     data = data.drop(["URL", "text"], axis=1)
 
