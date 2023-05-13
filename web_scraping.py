@@ -10,6 +10,7 @@ from PIL import Image
 from selenium import webdriver
 from tqdm.auto import tqdm
 from wrapt_timeout_decorator import timeout
+from webdriver_manager.chrome import ChromeDriverManager
 
 BRAND_NAMES = [
     "Microsoft",
@@ -72,7 +73,7 @@ def get_brand_name(text: str, brand_names: List[str]) -> str:
     return 'no_brand'
 
 
-@timeout(15, timeout_exception=TimeoutError)
+@timeout(60, timeout_exception=TimeoutError)
 def run_algos(driver, img):
 
     # selenium gets stuck, will need to force timeouts sometimes
@@ -92,15 +93,13 @@ def run_algos(driver, img):
 if __name__ == "__main__":
     # https://stackoverflow.com/questions/40555930/selenium-chromedriver-executable-needs-to-be-in-path
     # you will also need chrome for this
-    time_out_secs = 20
-    driver = webdriver.Chrome(
-        executable_path="../chromedriver_mac_arm64/chromedriver"
-    )  # driver initialization
+    time_out_secs = 60
+    driver = webdriver.Chrome(ChromeDriverManager().install())
     driver.implicitly_wait(time_out_secs)
     driver.set_page_load_timeout(time_out_secs)
 
     # going through all the data files
-    data_file = 'data/links/all_data_links.csv'
+    data_file = 'data/links/additional_phishing.csv'
     URLs, all_texts, brand_names = [], [], []
     color1s, color2s, color3s, color4s, color5s, color6s, color7s, color8s = [], [], [], [], [], [], [], []
     statuses = []
@@ -122,9 +121,7 @@ if __name__ == "__main__":
             driver.close()
             driver.quit()
 
-            driver = webdriver.Chrome(
-                executable_path="../chromedriver_mac_arm64/chromedriver"
-            )  # driver initialization
+            driver = webdriver.Chrome(ChromeDriverManager().install())  # driver initialization
             driver.implicitly_wait(time_out_secs)
             driver.set_page_load_timeout(time_out_secs)
             progress_bar.update(1)
@@ -171,7 +168,7 @@ if __name__ == "__main__":
             ),
         )
         out_df.to_csv(
-            f"data/scraped/all_data_scraped.csv", index=False
+            f"data/scraped/all_data_scraped2.csv", index=False
         )
         progress_bar.update(1)
     driver.quit()

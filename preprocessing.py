@@ -80,36 +80,37 @@ def get_url_len(url_str):
 
 
 #get n-grams for each text(in our case it is n=2)
-def get_english_char_bigram_probs():
-    words = nltk.corpus.words.words('en') # loading in a corpus of words
+def get_url_char_bigram_probs():
+    urls = pd.read_csv('data/links/top-1m.csv', names=['idx', 'URL'])
+    urls = urls['URL']
     bg_cnts = {}
     ung_cnts = {}
     # going through each word in the corpus
-    for word in words:
-        padding = ' ' # needed for bigram models
-        word = padding + word.lower() + padding
+    for url in urls:
+        padding = ' '  # needed for bigram models
+        url = padding + url.lower() + padding
         # getting characters
-        chars = [c for c in word]
-        bgs = nltk.bigrams(chars) # getting bigrams
-        
+        chars = [c for c in url]
+        bgs = nltk.bigrams(chars)  # getting bigrams
+
         # adding bigram to counts dictionary
         for bigram in bgs:
             bg_cnts[bigram] = bg_cnts[bigram] + 1 if bigram in bg_cnts else 1
-            
-        #adding unigram to count dictionary
+
+        # adding unigram to count dictionary
         for unigram in chars:
             ung_cnts[unigram] = ung_cnts[unigram] + 1 if unigram in ung_cnts else 1
-    
+
     # turning each count into a probability (MLE)
     for k, v in bg_cnts.items():
-        first_word, _ = k
-        denom = ung_cnts[first_word]
-        bg_cnts[k] = v/denom # now it is a conditional probability
-        
+        first_char, _ = k
+        denom = ung_cnts[first_char]
+        bg_cnts[k] = v / denom  # now it is a conditional probability
+
     # same for unigrams
     norm = sum(ung_cnts.values())
     for k, v in ung_cnts.items():
-        ung_cnts[k] = v/norm
+        ung_cnts[k] = v / norm
 
     return bg_cnts, ung_cnts
 
@@ -122,7 +123,7 @@ def get_score(ung_probs, bg_probs, url_str):
     # getting a score of each url char bigram
     score = 0
     for bigram in url_bgs:
-        # using linear interpolatation smoothing in negative log space to prevent underflow (lambda 0.5)
+        # using linear interpolation smoothing (lambda 0.5)
         first_word, _ = bigram
         score += 0.5*bg_probs.get(bigram, 0) + 0.5*ung_probs.get(first_word, 0)
         # TODO probably should do entropy here
@@ -155,7 +156,8 @@ if __name__ == "__main__":
     data = one_hot_encoding(data)
     data = data.drop(['brand_name', 'no_brand'], axis=1)
 
-    bg_probs, ung_probs = get_english_char_bigram_probs()
+    # URL based features
+    bg_probs, ung_probs = get_url_char_bigram_probs()
     url_lens = []
     url_scores = []
     for url in data['URL']:
@@ -165,13 +167,15 @@ if __name__ == "__main__":
         url_lens.append(l)
         url_scores.append(score)
 
+    # text based features
+    text_lens = []
+    for t in data['text']:
+        text_lens.append(len(t))
+
     # adding new features to data
     data['url_len'] = url_lens
     data['tld_char_score'] = url_scores
-
-    # # needed for redo
-    # data[["URL", "status"]].to_csv('data/links/links_for_redo.csv', index=False)
-
+    data['text_len'] = text_lens
     # dropping all text features
     data = data.drop(["URL", "text"], axis=1)
 

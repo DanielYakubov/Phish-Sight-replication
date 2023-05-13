@@ -41,7 +41,10 @@ if __name__ == "__main__":
     KNN_params = {"n_neighbors": [1, 3, 5, 7, 9, 11, 15],
                   "weights": ['uniform', 'distance'],
                   "p": [1, 2]}
-    SVC_params = {"C": [1.0, 0.1, 0.01, 0.001, 0.0001]}
+    SVC_params = {"C": [1.0, 0.1, 0.01, 0.001, 0.0001],
+                  "gamma": ["scale", "auto"],
+                  "degree": [1, 2, 3, 4],
+                  "kernel": ["linear", "poly", "rbf", "sigmoid"]}
     DT_params = {
         "criterion": ["gini", "entropy", "log_loss"],
         "max_depth": [None, 3, 5, 7, 9]
@@ -57,8 +60,8 @@ if __name__ == "__main__":
         (LogisticRegression, logistic_params, 'scaling'),
         (GaussianNB, {}, 'scaling'),  # NB doesn't really need tuning
         (SVC, SVC_params, 'scaling'),
-        (DecisionTreeClassifier, DT_params, 'no_scaling'),
-        (RandomForestClassifier, RF_params, 'no_scaling'),
+        (DecisionTreeClassifier, DT_params, 'scaling'),
+        (RandomForestClassifier, RF_params, 'scaling'),
         (KNeighborsClassifier, KNN_params, 'no_scaling')
     ]
 
