@@ -14,6 +14,3 @@ The directory is as follows:
 - web_scraping.py is the script which does its namesake. It uses selenium and does a bulk of the feature extraction
 - preprocessing.py cleans the data and continues a bit of the feature extraction
 - classical_trainer.py tunes and trains the classical ML models and stores their results in metrics/.
-
-TODO:
-- Add ANN from collab
