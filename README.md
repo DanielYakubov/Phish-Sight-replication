@@ -10,7 +10,6 @@ The directory is as follows:
 - /data contains links and scraped data used for the research
 - /metrics contains the metrics from our run of the repo
 - /models contains pickled models for future use
-- /notebooks contains our EDA, model deep dives, and our attempt at direct replication of Pandey and Mishra (2023)
 - web_scraping.py is the script which does its namesake. It uses selenium and does a bulk of the feature extraction
 - preprocessing.py cleans the data and continues a bit of the feature extraction
 - classical_trainer.py tunes and trains the classical ML models and stores their results in metrics/.
