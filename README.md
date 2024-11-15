@@ -28,4 +28,5 @@ The directory is as follows:
 
 ## Contributors
 Neh Majmudar (nehmajmudar@gmail.com)
+
 Daniel Yakubov (danielyak@gmail.com)
