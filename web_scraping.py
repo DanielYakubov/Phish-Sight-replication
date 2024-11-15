@@ -1,6 +1,6 @@
-from multiprocessing import Process
 import os
 import re
+from multiprocessing import Process
 from typing import List
 
 import colorgram
@@ -9,8 +9,8 @@ import pytesseract
 from PIL import Image
 from selenium import webdriver
 from tqdm.auto import tqdm
-from wrapt_timeout_decorator import timeout
 from webdriver_manager.chrome import ChromeDriverManager
+from wrapt_timeout_decorator import timeout
 
 BRAND_NAMES = [
     "Microsoft",

@@ -1,20 +1,20 @@
 # Model Imports
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.dummy import DummyClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.naive_bayes import GaussianNB
-from sklearn.svm import SVC
-from sklearn.preprocessing import StandardScaler
-
-# Metric imports
-from sklearn.metrics import accuracy_score, f1_score, recall_score, precision_score, matthews_corrcoef,cohen_kappa_score, confusion_matrix
-from sklearn.model_selection import GridSearchCV
-
+import joblib
 # other
 import pandas as pd
-import joblib
+from sklearn.dummy import DummyClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+# Metric imports
+from sklearn.metrics import (accuracy_score, cohen_kappa_score,
+                             confusion_matrix, f1_score, matthews_corrcoef,
+                             precision_score, recall_score)
+from sklearn.model_selection import GridSearchCV
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
 
 
 def get_fpr(y_test, y_hat):

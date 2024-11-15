@@ -1,10 +1,10 @@
-import numpy as np
 import re
-import pandas as pd
-import nltk
-
-from sklearn.model_selection import train_test_split
 from urllib.parse import urlparse
+
+import nltk
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
 
 
 #read and get the data
