@@ -1,26 +1,36 @@
-# Model Imports
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.dummy import DummyClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.naive_bayes import GaussianNB
-from sklearn.svm import SVC
-from sklearn.preprocessing import StandardScaler
+"""This module contains the code to train classical machine learning models on the dataset"""
 
-# Metric imports
-from sklearn.metrics import accuracy_score, f1_score, recall_score, precision_score, matthews_corrcoef,cohen_kappa_score, confusion_matrix
-from sklearn.model_selection import GridSearchCV
-
-# other
-import pandas as pd
 import joblib
+import numpy as np
+import pandas as pd
+from sklearn.dummy import DummyClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import (accuracy_score, cohen_kappa_score,
+                             confusion_matrix, f1_score, matthews_corrcoef,
+                             precision_score, recall_score)
+from sklearn.model_selection import GridSearchCV
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
 
 
-def get_fpr(y_test, y_hat):
+def get_fpr(y_test: np.array, y_hat: np.array) -> float:
+    """Calculate the false positive rate for the y labels
+
+    Args:
+        y_test (np.array): the gold labels
+        y_hat (np.array): the predicted labels
+
+    Returns:
+        the false positive rate as a score
+    """
     tn, fp, fn, tp = confusion_matrix(y_test, y_hat).ravel()
-    fpr = fp/(fp+tn)
+    fpr = fp / (fp + tn)
     return fpr
+
 
 if __name__ == "__main__":
     # reading in data
@@ -35,16 +45,22 @@ if __name__ == "__main__":
     X_test_scaled = scaler.transform(X_test)
 
     # setting up params for models
-    logistic_params = {"solver": ["liblinear"], # small dataset - liblinear makes sense
+    logistic_params = {
+        "solver": ["liblinear"],  # small dataset - liblinear makes sense
         "C": [1.0, 0.1, 0.01, 0.001, 0.0001],
-                     "penalty": ["l1", "l2"]}
-    KNN_params = {"n_neighbors": [1, 3, 5, 7, 9, 11, 15],
-                  "weights": ['uniform', 'distance'],
-                  "p": [1, 2]}
-    SVC_params = {"C": [1.0, 0.1, 0.01, 0.001, 0.0001],
-                  "gamma": ["scale", "auto"],
-                  "degree": [1, 2, 3, 4],
-                  "kernel": ["linear", "poly", "rbf", "sigmoid"]}
+        "penalty": ["l1", "l2"]
+    }
+    KNN_params = {
+        "n_neighbors": [1, 3, 5, 7, 9, 11, 15],
+        "weights": ['uniform', 'distance'],
+        "p": [1, 2]
+    }
+    SVC_params = {
+        "C": [1.0, 0.1, 0.01, 0.001, 0.0001],
+        "gamma": ["scale", "auto"],
+        "degree": [1, 2, 3, 4],
+        "kernel": ["linear", "poly", "rbf", "sigmoid"]
+    }
     DT_params = {
         "criterion": ["gini", "entropy", "log_loss"],
         "max_depth": [None, 3, 5, 7, 9]
@@ -85,10 +101,10 @@ if __name__ == "__main__":
             inloop_test_X = X_test
 
         gs_clf = GridSearchCV(estimator=model(),
-                     param_grid=params,
-                     cv=5,
-                     verbose=0,
-                     scoring='recall') # we want to maximize recall
+                              param_grid=params,
+                              cv=5,
+                              verbose=0,
+                              scoring='recall')  # we want to maximize recall
         gs_clf.fit(inloop_train_X, y_train)
 
         # training the model using the best params
@@ -112,12 +128,17 @@ if __name__ == "__main__":
         print('----')
 
     # saving metrics
-    models = [model.__name__ for model, _, _ in model_and_params] # getting only the model names
-    metrics = pd.DataFrame(data=zip(models, accs, f1s, recalls, precisions, MCCs, kappas, fprs),
-                           columns=['Model', "Accuracy", "F1", "Recall", "Precision", "Matthews correlation coefficient (MCC)", "Kappa Coefficient", "FPR"])
+    models = [model.__name__ for model, _, _ in model_and_params
+             ]  # getting only the model names
+    metrics = pd.DataFrame(data=zip(models, accs, f1s, recalls, precisions,
+                                    MCCs, kappas, fprs),
+                           columns=[
+                               'Model', "Accuracy", "F1", "Recall", "Precision",
+                               "Matthews correlation coefficient (MCC)",
+                               "Kappa Coefficient", "FPR"
+                           ])
     metrics.to_csv("metrics/classical_models.csv")
     print(metrics)
-
 
     # This is the code to load one of these models
     # Decision Tree for example:

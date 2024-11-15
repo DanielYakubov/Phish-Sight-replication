@@ -1,7 +1,10 @@
-from multiprocessing import Process
+"""Webscraping script using a selenium webdriver.
+This script will likely require disabling your firewall to run properly, as such, it is NOT recommended to run it"""
+
 import os
 import re
-from typing import List
+from multiprocessing import Process
+from typing import List, Tuple
 
 import colorgram
 import pandas as pd
@@ -9,8 +12,8 @@ import pytesseract
 from PIL import Image
 from selenium import webdriver
 from tqdm.auto import tqdm
-from wrapt_timeout_decorator import timeout
 from webdriver_manager.chrome import ChromeDriverManager
+from wrapt_timeout_decorator import timeout
 
 BRAND_NAMES = [
     "Microsoft",
@@ -34,37 +37,62 @@ BRAND_NAMES = [
 ]
 
 
-def rgb_to_decimal(r, g, b):
-    """converting an rgb value to a base10 value"""
+def rgb_to_decimal(r: int, g: int, b: int):
+    """Converting rgb values to a singular base10 value
+
+    Args:
+        r (int): red value
+        g (int): green value
+        b (int): blue value
+
+    Returns:
+        int a singular base10 value to represent the color
+    """
     return (r << 16) + (g << 8) + b
 
-def get_colors(img_path, num_colors=8):
-    """
-    Extract num_colors from an image file, returned as a list of RGB Dictionaries
+
+def get_colors(img_path: str, num_colors: int = 8) -> List[int]:
+    """Extract num_colors from an image file, returned as a list of RGB Dictionaries
+
+    Args:
+        img_path (str): the path to the screenshot
+        num_colors: the number of colors we want to extract
+
+    Returns:
+        output_colors (List[int]): the num_colors colors that were present in the image in decimal format
     """
     colors = colorgram.extract(img_path, num_colors)
     colors = [(rgb_to_decimal(c.rgb.r, c.rgb.g, c.rgb.b)) for c in colors]
-    output_colors = [0] * 8
+    output_colors = [
+        0
+    ] * num_colors  # to be explicit that there is always only num_colors colors
     for i, c in enumerate(colors):
         output_colors[i] = c
 
     return output_colors
 
 
-def get_text_from_image(img_path):
-    """
-    Extract text from an image file, returned as an str
+def get_text_from_image(img_path: str) -> str:
+    """Extract text from an image file using an OCR library, returned as a str
+
+    Args:
+        img_path (str): the path to the screenshot
+
+    Returns:
+        (str) any text that was present on the image
     """
     img = Image.open(img_path)
     return pytesseract.image_to_string(img).strip()
 
 
 def get_brand_name(text: str, brand_names: List[str]) -> str:
-    """
-    Checks if a text contains brand names, if yes, it returns the brand name
-    assumes only one brand name
-    :param text: str from text read in using OCR on a webpage
-    :return: str, the brand name that is present if there is one, else 'no_brand'
+    """Checks if a text contains brand names, if yes, it returns the brand name, assumes only one brand name
+
+    Args:
+        text (str): from text read in using OCR on a webpage
+
+    Returns:
+        (str) the brand name that is present if there is one, else 'no_brand'
     """
     for name in brand_names:
         # very naive, no normalizing text or accounting for OCR errors
@@ -74,17 +102,29 @@ def get_brand_name(text: str, brand_names: List[str]) -> str:
 
 
 @timeout(60, timeout_exception=TimeoutError)
-def run_algos(driver, img):
+def run_algos(url: str, web_driver: webdriver,
+              img_pth: str) -> Tuple[List[int], str, str]:
+    """Screenshot the webpage then extract the features from it. This is a replication of Phish Sight's algo 1 and 2.
 
+    Args:
+        url (str): the url for the webdriver to visit
+        web_driver (webdriver): the selenium webdriver
+        img_pth (str): the path save the image
+
+    Returns:
+        colors (List[int]): the colors present in the image
+        text (str): the text present on the page
+        brand_name (str): the brand name present on the page
+    """
     # selenium gets stuck, will need to force timeouts sometimes
-    driver.get(URL)
+    web_driver.get(url)
 
     # "algo 1"
-    driver.get_screenshot_as_file(img)
-    colors = get_colors(img)
+    web_driver.get_screenshot_as_file(img_pth)
+    colors = get_colors(img_pth)
 
     # "algo 2"
-    text = get_text_from_image(img)
+    text = get_text_from_image(img_pth)
     brand_name = get_brand_name(text, BRAND_NAMES)
 
     return colors, text, brand_name
@@ -113,7 +153,7 @@ if __name__ == "__main__":
                 URL = row[0]
 
             img = "tmp.png"
-            colors, text, brand_name = run_algos(driver, img)
+            colors, text, brand_name = run_algos(URL, driver, img)
 
         except Exception as e:
             # Any exception, we just want to continue
@@ -121,7 +161,8 @@ if __name__ == "__main__":
             driver.close()
             driver.quit()
 
-            driver = webdriver.Chrome(ChromeDriverManager().install())  # driver initialization
+            driver = webdriver.Chrome(
+                ChromeDriverManager().install())  # driver initialization
             driver.implicitly_wait(time_out_secs)
             driver.set_page_load_timeout(time_out_secs)
             progress_bar.update(1)
@@ -163,13 +204,9 @@ if __name__ == "__main__":
                 "brand_name",
                 "status",
             ],
-            data=zip(
-                URLs, color1s, color2s, color3s, color4s, color5s, color6s, color7s, color8s, all_texts, brand_names, statuses
-            ),
+            data=zip(URLs, color1s, color2s, color3s, color4s, color5s, color6s,
+                     color7s, color8s, all_texts, brand_names, statuses),
         )
-        out_df.to_csv(
-            f"data/scraped/all_data_scraped2.csv", index=False
-        )
+        out_df.to_csv(f"data/scraped/all_data_scraped2.csv", index=False)
         progress_bar.update(1)
     driver.quit()
-
