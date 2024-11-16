@@ -24,14 +24,14 @@ def drop_nulls_and_duplicates(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def non_unique_text(df: pd.DataFrame) -> pd.DataFrame:
-    """Filter out texts that are not repeating in the dataset
+def drop_non_unique_text(df: pd.DataFrame) -> pd.DataFrame:
+    """Filter out texts that are repeating in the dataset
 
     Args:
-        df (pd.DataFrame): a generic pandas dataframe
+        df (pd.DataFrame): a generic pandas dataframe containing a column texts
 
     Returns:
-        (pd.DataFrame) with non-unique values
+        (pd.DataFrame) with unique values
     """
     ty = pd.DataFrame(data=df['text'].value_counts().sort_values(
         ascending=False))
@@ -62,14 +62,14 @@ def drop_bad_pages(df: pd.DataFrame) -> pd.DataFrame:
     bad_pages = []
     bad_pattern = r"Site Not Found|This page isn’t working|Internal Server Error|This page isn’t working|Your connection is not private|404"
     for i in range(len(df)):
-        if re.match(bad_pattern, df['text'][i], flags=re.IGNORECASE):
+        if re.search(bad_pattern, df['text'][i], flags=re.IGNORECASE):
             bad_pages.append(i)
     df = df.drop(labels=bad_pages, axis=0)
     df = df.reset_index(drop=True)
     return df
 
 
-def one_hot_encoding(df: pd.DataFrame) -> pd.DataFrame:
+def one_hot_encode(df: pd.DataFrame) -> pd.DataFrame:
     """Conversion of brands to numerical values via one hot encoding
 
     Args:
@@ -166,7 +166,6 @@ def get_score(ung_probs: Dict[str, float], bg_probs: Dict[str, float],
     return score
 
 
-#normal splitting of the dataset into training and testing
 def split_data(df: pd.DataFrame, random_state=42) -> Tuple[np.array]:
     """
     Normal splitting of the dataset into training and testing
@@ -209,9 +208,9 @@ def store_datasets(x_train: np.array, x_test: np.array, y_train: np.array,
 if __name__ == "__main__":
     data = pd.read_csv("data/scraped/all_data_scraped.csv")
     data = drop_nulls_and_duplicates(data)
-    data = non_unique_text(data)
+    data = drop_non_unique_text(data)
     data = drop_bad_pages(data)
-    data = one_hot_encoding(data)
+    data = one_hot_encode(data)
     data = data.drop(['brand_name', 'no_brand'], axis=1)
 
     # URL based features
