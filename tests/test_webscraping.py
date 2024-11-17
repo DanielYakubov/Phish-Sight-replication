@@ -1,7 +1,7 @@
 import unittest
 
-from web_scraping import (get_brand_name, get_colors, get_text_from_image,
-                          rgb_to_decimal)
+from data.web_scraping import (get_brand_name, get_colors, get_text_from_image,
+                               rgb_to_decimal)
 
 
 class TestWebScraping(unittest.TestCase):

@@ -105,7 +105,7 @@ def get_url_char_bigram_probs() -> Tuple[float]:
     Returns:
         Tuple(bg_cnts, ung_cnts): the probability of bigrams and unigrams occuring in the text
     """
-    urls = pd.read_csv('data/links/top-1m.csv', names=['idx', 'URL'])
+    urls = pd.read_csv('links/top-1m.csv', names=['idx', 'URL'])
     urls = urls['URL']
     bg_cnts = {}
     ung_cnts = {}
@@ -206,7 +206,7 @@ def store_datasets(x_train: np.array, x_test: np.array, y_train: np.array,
 
 
 if __name__ == "__main__":
-    data = pd.read_csv("data/scraped/all_data_scraped.csv")
+    data = pd.read_csv("scraped/all_data_scraped.csv")
     data = drop_nulls_and_duplicates(data)
     data = drop_non_unique_text(data)
     data = drop_bad_pages(data)

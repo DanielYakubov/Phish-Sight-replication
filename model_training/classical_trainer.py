@@ -34,10 +34,10 @@ def get_fpr(y_test: np.array, y_hat: np.array) -> float:
 
 if __name__ == "__main__":
     # reading in data
-    X_train = pd.read_csv("data/X_train.csv").to_numpy()
-    X_test = pd.read_csv("data/X_test.csv").to_numpy()
-    y_train = pd.read_csv("data/y_train.csv").to_numpy().ravel()
-    y_test = pd.read_csv("data/y_test.csv").to_numpy().ravel()
+    X_train = pd.read_csv("../data/X_train.csv").to_numpy()
+    X_test = pd.read_csv("../data/X_test.csv").to_numpy()
+    y_train = pd.read_csv("../data/y_train.csv").to_numpy().ravel()
+    y_test = pd.read_csv("../data/y_test.csv").to_numpy().ravel()
 
     # getting scaled features
     scaler = StandardScaler()
