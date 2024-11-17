@@ -1,14 +1,71 @@
 import csv
+import logging
+from typing import Dict, List
 
 import numpy as np
 import pandas as pd
 import tensorflow as tf
 from keras.api.layers import Dense
 from keras.api.models import Sequential
-from sklearn.metrics import (accuracy_score, cohen_kappa_score, f1_score,
-                             matthews_corrcoef, precision_score, recall_score,
-                             roc_auc_score, roc_curve)
+from metrics_utils import get_metrics
 from sklearn.preprocessing import StandardScaler
+
+
+def _write_model_results_to_file(file_name: str, metdict: Dict[str,
+                                                               float]) -> None:
+    """Writes the results of a model to the specified file name
+
+    Args:
+        metdict (Dict[str, float]): a dictionary containing the values for the metrics
+
+    Returns:
+        None, writes a file
+    """
+    w = csv.writer(open(file_name, "w"))
+    for key, val in metdict.items():
+        w.writerow([key, val])
+
+
+def ann_hyperparameter_search(eps: List[int], neurons: List[int]) -> None:
+    """Performs a grid search for models over epochs and neurons
+
+    Args:
+        eps (List[int]): A list of epoch number options to search through
+        neurons (List[int]): A list of neuron options to search through
+
+    Returns:
+        None, writes a file
+    """
+    metdict = {}
+    for i in range(len(eps)):
+        for j in range(len(neurons)):
+            logging.info(f'for {eps[i]}, {neurons[j]}, the results are: ')
+            model = Sequential()
+            model.add(Dense(neurons[j], activation="relu"))
+            model.add(Dense(1, activation='sigmoid'))
+            model.compile(optimizer='sgd',
+                          loss="binary_crossentropy",
+                          metrics=['accuracy'])
+            model.fit(X_train_scaled,
+                      ytrain,
+                      validation_split=0.25,
+                      epochs=eps[i],
+                      verbose=0)
+            y_hat = model.predict(X_test_scaled)
+            ypred = []
+            for k in y_hat:
+                if k > 0.5:
+                    ypred.append(1)
+                else:
+                    ypred.append(0)
+
+            ypred = np.asarray(ypred)
+            metdict[
+                f'for {eps[i]}, {neurons[j]}, the results are: '] = get_metrics(
+                    ytest, ypred)
+    _write_model_results_to_file("..data/experiment_results/ann_models.csv",
+                                 metdict)
+
 
 if __name__ == '__main__':
     xtrain = pd.read_csv("../data/X_train.csv")
@@ -21,57 +78,13 @@ if __name__ == '__main__':
     X_train_scaled = scaler.fit_transform(xtrain)
     X_test_scaled = scaler.transform(xtest)
 
-    # took about 25 minutes to run on Colab. Locally, could be take more time.
-    # ann_models.csv file has this data.
-
-    eps = [75, 100, 125, 150, 175, 200, 225, 250]
-    neurons = [32, 64, 128, 256, 512]
-    metdict = {}
-
-    def metrics(eps, neu, ytest, ypred):
-        return accuracy_score(ytest, ypred), f1_score(
-            ytest, ypred), recall_score(ytest, ypred), precision_score(
-                ytest, ypred), matthews_corrcoef(ytest,
-                                                 ypred), cohen_kappa_score(
-                                                     ytest, ypred)
-
-    for i in range(len(eps)):
-        for j in range(len(neurons)):
-            print(f'for {eps[i]}, {neurons[j]}, the results are: ')
-            model = Sequential()
-            model.add(Dense(neurons[j], activation="relu"))
-            model.add(Dense(1, activation='sigmoid'))
-            model.compile(optimizer='sgd',
-                          loss="binary_crossentropy",
-                          metrics=['accuracy'])
-            model.fit(X_train_scaled,
-                      ytrain,
-                      validation_split=0.25,
-                      epochs=eps[i],
-                      verbose=0)
-            y_pred = model.predict(X_test_scaled)
-            ypred = []
-            for k in y_pred:
-                if k > 0.5:
-                    ypred.append(1)
-                else:
-                    ypred.append(0)
-
-            ypred = np.asarray(ypred)
-            acc, f1, rec, pre, mcc, coh = metrics(eps[i], neurons[j], ytest,
-                                                  ypred)
-            val = [acc, f1, rec, pre, mcc, coh]
-            metdict[f'for {eps[i]}, {neurons[j]}, the results are: '] = val
-            print(val)
-
-    w = csv.writer(open("ann_models.csv", "w"))
-    for key, val in metdict.items():
-        w.writerow([key, val])
-
-    # ann_results.csv has the metrics of these models.
+    # eps = [75, 100, 125, 150, 175, 200, 225, 250]
+    # neurons = [32, 64, 128, 256, 512]
+    # ann_hyperparameter_search(eps, neurons)
 
     tf.keras.backend.clear_session()
 
+    # initialization of models that will be used
     model = Sequential()
     model.add(Dense(1, activation='sigmoid'))
 
@@ -109,80 +122,33 @@ if __name__ == '__main__':
     model8.add(Dense(512, activation='relu'))
     model8.add(Dense(1, activation='sigmoid'))
 
-    model.compile(optimizer="sgd",
-                  loss="binary_crossentropy",
-                  metrics=[tf.keras.metrics.Recall(), 'accuracy'])
-    model1.compile(optimizer="sgd",
-                   loss="binary_crossentropy",
-                   metrics=[tf.keras.metrics.Recall(), 'accuracy'])
-    model2.compile(optimizer="sgd",
-                   loss="binary_crossentropy",
-                   metrics=[tf.keras.metrics.Recall(), 'accuracy'])
-    model3.compile(optimizer="sgd",
-                   loss="binary_crossentropy",
-                   metrics=[tf.keras.metrics.Recall(), 'accuracy'])
-    model4.compile(optimizer="sgd",
-                   loss="binary_crossentropy",
-                   metrics=[tf.keras.metrics.Recall(), 'accuracy'])
-    model5.compile(optimizer="sgd",
-                   loss="binary_crossentropy",
-                   metrics=[tf.keras.metrics.Recall(), 'accuracy'])
-    model6.compile(optimizer="sgd",
-                   loss="binary_crossentropy",
-                   metrics=[tf.keras.metrics.Recall(), 'accuracy'])
-    model7.compile(optimizer="sgd",
-                   loss="binary_crossentropy",
-                   metrics=[tf.keras.metrics.Recall(), 'accuracy'])
-    model8.compile(optimizer="sgd",
-                   loss="binary_crossentropy",
-                   metrics=[tf.keras.metrics.Recall(), 'accuracy'])
-
-    history = model.fit(X_train_scaled,
-                        ytrain,
-                        validation_split=0.25,
-                        epochs=250,
-                        verbose=1)
-    history1 = model1.fit(X_train_scaled,
-                          ytrain,
-                          validation_split=0.25,
-                          epochs=250,
-                          verbose=1)
-    history2 = model2.fit(X_train_scaled,
-                          ytrain,
-                          validation_split=0.25,
-                          epochs=250,
-                          verbose=1)
-    history3 = model3.fit(X_train_scaled,
-                          ytrain,
-                          validation_split=0.25,
-                          epochs=250,
-                          verbose=1)
-    history4 = model4.fit(X_train_scaled,
-                          ytrain,
-                          validation_split=0.25,
-                          epochs=250,
-                          verbose=1)
-    history5 = model5.fit(X_train_scaled,
-                          ytrain,
-                          validation_split=0.25,
-                          epochs=250,
-                          verbose=1)
-    history6 = model6.fit(X_train_scaled,
-                          ytrain,
-                          validation_split=0.25,
-                          epochs=250,
-                          verbose=1)
-    history7 = model7.fit(X_train_scaled,
-                          ytrain,
-                          validation_split=0.25,
-                          epochs=250,
-                          verbose=1)
-    history8 = model8.fit(X_train_scaled,
-                          ytrain,
-                          validation_split=0.25,
-                          epochs=250,
-                          verbose=1)
-
-    w = csv.writer(open("ann_results.csv", "w"))
-    for key, val in metdict.items():
-        w.writerow([key, val])
+    histories = []
+    metdict = {}
+    for i, model_ in enumerate(
+        [model, model1, model2, model3, model4, model5, model6, model7,
+         model8]):
+        model_.compile(optimizer="sgd",
+                       loss="binary_crossentropy",
+                       metrics=[tf.keras.metrics.Recall(), 'accuracy'])
+        histories.append(
+            model_.fit(X_train_scaled,
+                       ytrain,
+                       validation_split=0.25,
+                       epochs=250,
+                       verbose=1))
+        model.fit(X_train_scaled,
+                  ytrain,
+                  validation_split=0.25,
+                  epochs=250,
+                  verbose=0)
+        y_hat = model.predict(X_test_scaled)
+        ypred = []
+        for k in y_hat:
+            if k > 0.5:
+                ypred.append(1)
+            else:
+                ypred.append(0)
+        ypred = np.asarray(ypred)
+        metdict[f'model_{i}'] = get_metrics(ytest, ypred)
+    _write_model_results_to_file("../data/experiment_results/ann_results.csv",
+                                 metdict)

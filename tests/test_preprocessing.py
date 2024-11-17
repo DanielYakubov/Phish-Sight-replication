@@ -3,7 +3,8 @@ import unittest
 import pandas as pd
 
 from data.preprocessing import (drop_bad_pages, drop_non_unique_text,
-                                drop_nulls_and_duplicates, get_top_level_domain)
+                                drop_nulls_and_duplicates,
+                                get_top_level_domain)
 
 
 class TestPreprocessing(unittest.TestCase):

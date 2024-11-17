@@ -1,14 +1,14 @@
 """This module contains the code to train classical machine learning models on the dataset"""
 
+import logging
+from typing import Any, Dict, Protocol
+
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.dummy import DummyClassifier
+from metrics_utils import get_metrics
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import (accuracy_score, cohen_kappa_score,
-                             confusion_matrix, f1_score, matthews_corrcoef,
-                             precision_score, recall_score)
 from sklearn.model_selection import GridSearchCV
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
@@ -17,19 +17,67 @@ from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 
 
-def get_fpr(y_test: np.array, y_hat: np.array) -> float:
-    """Calculate the false positive rate for the y labels
+class ScikitModel(Protocol):
+    # https://stackoverflow.com/questions/54868698/what-type-is-a-sklearn-model
+    def fit(self, X, y, sample_weight=None):
+        ...
+
+    def predict(self, X):
+        ...
+
+    def score(self, X, y, sample_weight=None):
+        ...
+
+    def set_params(self, **params):
+        ...
+
+
+def hyperparameter_search(model: ScikitModel, params: Dict[str, Any],
+                          train_x: np.array,
+                          y_train: np.array) -> Dict[str, Any]:
+    """Performs hyperparameter search using gridsearch across a params dict.
 
     Args:
-        y_test (np.array): the gold labels
-        y_hat (np.array): the predicted labels
+        model (sklearn.BaseEstimator): The model to be trained
+        params (Dict[str, Any]): The dictionary containing the parameters for training.
+        scaling (str): specify if scaling is needed for the data. This depends on the model.
+        train_x (np.array): the training input data
+        y_train (np.array): the training labels
+    Returns:
+        bp (Dict[str, Any]): The best parameters for the model
+    """
+    logging.info(f"Starting hyperparameter search for {model.__name__}")
+    gs_clf = GridSearchCV(estimator=model(),
+                          param_grid=params,
+                          cv=5,
+                          verbose=0,
+                          scoring='recall')  # we want to maximize recall
+    gs_clf.fit(train_x, y_train)
+    bp = gs_clf.best_params_
+    logging.info(f"Best parameters found {bp} for model {model.__name__}")
+    return bp
+
+
+def train_and_get_pred(model: ScikitModel, best_params: Dict[str, Any],
+                       x_train: np.array, y_train: np.array,
+                       x_test: np.array) -> np.array:
+    """Train the using the best parameters and return predictions
+
+    Args:
+        model (sklearn.BaseEstimator): The model type we are training
+        best_params (Dict[str, Any]): The collection of the best parameters for the model
+        x_train (np.array): The input training data
+        y_train (np.array): The label training data
+        x_test (np.array): The input to predict on
 
     Returns:
-        the false positive rate as a score
+         y_hat (np.array): The predicted labels
     """
-    tn, fp, fn, tp = confusion_matrix(y_test, y_hat).ravel()
-    fpr = fp / (fp + tn)
-    return fpr
+    best_model = model(**best_params)
+    best_model.fit(x_train, y_train)
+    joblib.dump(best_model, f"../data/saved_models/{model.__name__}.pkl")
+    y_hat = best_model.predict(x_test)
+    return y_hat
 
 
 if __name__ == "__main__":
@@ -71,74 +119,37 @@ if __name__ == "__main__":
         "max_depth": [None, 3, 5, 7, 9]
     }
 
-    # models and params for easy looping
+    # models and params and scaling for easy looping
     model_and_params = [
-        (LogisticRegression, logistic_params, 'scaling'),
-        (GaussianNB, {}, 'scaling'),  # NB doesn't really need tuning
-        (SVC, SVC_params, 'scaling'),
-        (DecisionTreeClassifier, DT_params, 'scaling'),
-        (RandomForestClassifier, RF_params, 'scaling'),
-        (KNeighborsClassifier, KNN_params, 'no_scaling')
+        (LogisticRegression, logistic_params, True),
+        (GaussianNB, {}, True),  # NB doesn't really need tuning
+        (SVC, SVC_params, True),
+        (DecisionTreeClassifier, DT_params, True),
+        (RandomForestClassifier, RF_params, True),
+        (KNeighborsClassifier, KNN_params, False)
     ]
 
-    # setting up lists for metrics
-    accs = []
-    f1s = []
-    recalls = []
-    precisions = []
-    MCCs = []
-    kappas = []
-    fprs = []
-
-    # hyperparameter training loop and evaluation
+    metrics = []
     for model, params, scaling in model_and_params:
-        print(f"Starting hyperparameter search for {model.__name__}")
-        if scaling == 'scaling':
+        if scaling:
             inloop_train_X = X_train_scaled
             inloop_test_X = X_test_scaled
         else:
             inloop_train_X = X_train
             inloop_test_X = X_test
+        best_params = hyperparameter_search(model, params, inloop_train_X,
+                                            y_train)
+        y_hat = train_and_get_pred(model, best_params, inloop_train_X, y_train,
+                                   inloop_test_X)
+        metrics.append((model.__name__, *get_metrics(y_test, y_hat)))
 
-        gs_clf = GridSearchCV(estimator=model(),
-                              param_grid=params,
-                              cv=5,
-                              verbose=0,
-                              scoring='recall')  # we want to maximize recall
-        gs_clf.fit(inloop_train_X, y_train)
-
-        # training the model using the best params
-        bp = gs_clf.best_params_
-        print(f"Best parameters found {bp}, starting training and eval")
-        inloop_model = model(**gs_clf.best_params_)
-        inloop_model.fit(inloop_train_X, y_train)
-        joblib.dump(inloop_model, f"saved_models/{model.__name__}.pkl")
-
-        # Prediction and eval
-        y_hat = inloop_model.predict(inloop_test_X)
-
-        # updating metric lists
-        accs.append(accuracy_score(y_test, y_hat))
-        f1s.append(f1_score(y_test, y_hat))
-        recalls.append(recall_score(y_test, y_hat))
-        precisions.append(precision_score(y_test, y_hat))
-        MCCs.append(matthews_corrcoef(y_test, y_hat))
-        kappas.append(cohen_kappa_score(y_test, y_hat))
-        fprs.append(get_fpr(y_test, y_hat))
-        print('----')
-
-    # saving metrics
-    models = [model.__name__ for model, _, _ in model_and_params
-             ]  # getting only the model names
-    metrics = pd.DataFrame(data=zip(models, accs, f1s, recalls, precisions,
-                                    MCCs, kappas, fprs),
+    metrics = pd.DataFrame(data=metrics,
                            columns=[
                                'Model', "Accuracy", "F1", "Recall", "Precision",
                                "Matthews correlation coefficient (MCC)",
                                "Kappa Coefficient", "FPR"
                            ])
-    metrics.to_csv("metrics/classical_models.csv")
-    print(metrics)
+    metrics.to_csv("../data/experiment_results/classical_models.csv")
 
     # This is the code to load one of these models
     # Decision Tree for example:
