@@ -24,7 +24,7 @@ class TestPreprocessing(unittest.TestCase):
         df = pd.DataFrame(data=toy_data, columns=['text'])
         new_df = drop_non_unique_text(df)
         self.assertEqual(len(new_df), 1)
-        self.assertIn('Thou art more lovely and more temperate', new_df)
+        self.assertIn('Thou art more lovely and more temperate', new_df['text'].values)
 
     def test_drop_bad_pages(self):
         toy_data = [
@@ -34,7 +34,7 @@ class TestPreprocessing(unittest.TestCase):
         df = pd.DataFrame(data=toy_data, columns=['text'])
         new_df = drop_bad_pages(df)
         self.assertEqual(len(new_df), 1)
-        self.assertIn('Error', new_df)
+        self.assertIn('Error', new_df['text'].values)
 
     def test_one_hot_encode(self):
         pass  # TODO implement? Not sure if it makes sense.
