@@ -37,7 +37,7 @@ BRAND_NAMES = [
 ]
 
 
-def rgb_to_decimal(r: int, g: int, b: int):
+def rgb_to_decimal(r: int, g: int, b: int) -> int:
     """Converting rgb values to a singular base10 value
 
     Args:
