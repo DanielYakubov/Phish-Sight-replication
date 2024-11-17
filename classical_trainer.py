@@ -112,7 +112,7 @@ if __name__ == "__main__":
         print(f"Best parameters found {bp}, starting training and eval")
         inloop_model = model(**gs_clf.best_params_)
         inloop_model.fit(inloop_train_X, y_train)
-        joblib.dump(inloop_model, f"models/{model.__name__}.pkl")
+        joblib.dump(inloop_model, f"saved_models/{model.__name__}.pkl")
 
         # Prediction and eval
         y_hat = inloop_model.predict(inloop_test_X)
