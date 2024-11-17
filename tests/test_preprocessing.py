@@ -1,6 +1,9 @@
 import unittest
+
 import pandas as pd
-from preprocessing import drop_nulls_and_duplicates, drop_non_unique_text, drop_bad_pages, get_top_level_domain
+
+from preprocessing import (drop_bad_pages, drop_non_unique_text,
+                           drop_nulls_and_duplicates, get_top_level_domain)
 
 
 class TestPreprocessing(unittest.TestCase):
